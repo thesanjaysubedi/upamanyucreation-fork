@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Upload to Showcase — Upamanyu Admin</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="icon" href="assets/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .admin-wrap { max-width: 980px; margin: 0 auto; padding: 7rem 0 4rem; }
+    .admin-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 18px; padding: 2.5rem; margin-bottom: 2rem;
+      box-shadow: var(--shadow);
+    }
+    .admin-card h1 { margin-bottom: 0.5rem; }
+    .admin-card .sub { color: var(--text-muted); margin-bottom: 2rem; }
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 14px;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      margin-bottom: 1.5rem;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--orange);
+      background: rgba(200,90,63,0.06);
+    }
+    .drop-zone .label { font-weight: 600; margin-bottom: 0.25rem; }
+    .drop-zone .hint { color: var(--text-muted); font-size: 0.85rem; }
+    .drop-zone input[type="file"] { display: none; }
+    .preview {
+      margin-bottom: 1.5rem; display: none;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1rem;
+    }
+    .preview.show { display: block; }
+    .preview .filename { font-weight: 600; margin-bottom: 0.5rem; word-break: break-all; }
+    .preview .filesize { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.75rem; }
+    .preview img, .preview video { max-width: 100%; max-height: 320px; border-radius: 8px; display: block; margin: 0 auto; }
+    .preview .thumb-preview {
+      margin-top: 0.75rem; padding-top: 0.75rem;
+      border-top: 1px dashed var(--border);
+      font-size: 0.85rem; color: var(--text-muted);
+    }
+    .preview .thumb-preview img { max-height: 120px; margin-top: 0.5rem; }
+    .row-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; }
+    @media (max-width: 600px) { .row-2 { grid-template-columns: 1fr; } }
+    .progress-bar {
+      height: 6px; background: var(--border); border-radius: 999px;
+      overflow: hidden; margin: 1rem 0; display: none;
+    }
+    .progress-bar.show { display: block; }
+    .progress-bar .fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--teal-bright), var(--orange));
+      transition: width 0.2s;
+    }
+
+    /* Manage items grid */
+    .manage-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 1rem;
+    }
+    .manage-item {
+      position: relative;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .manage-item:hover { border-color: var(--orange); transform: translateY(-2px); }
+    .manage-item .thumb {
+      aspect-ratio: 4/5;
+      width: 100%;
+      object-fit: cover;
+      background: var(--bg-card);
+      display: block;
+    }
+    .manage-item .info {
+      padding: 0.75rem;
+      font-size: 0.85rem;
+    }
+    .manage-item .info .title {
+      font-weight: 600; margin-bottom: 0.25rem;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .manage-item .info .cat {
+      color: var(--orange-bright); font-size: 0.72rem;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .manage-item .delete-btn {
+      position: absolute; top: 0.5rem; right: 0.5rem;
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: rgba(15,20,25,0.85);
+      color: #fff;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: background 0.2s, transform 0.2s;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .manage-item .delete-btn:hover { background: var(--orange); transform: scale(1.1); }
+    .manage-toolbar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;
+    }
+    .manage-toolbar .filters { display: flex; gap: 0.5rem; }
+    .manage-toolbar button {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: 0.85rem; font-weight: 500;
+    }
+    .manage-toolbar button.active { background: var(--orange); color: #fff; border-color: var(--orange); }
+    .manage-empty {
+      grid-column: 1 / -1;
+      text-align: center; padding: 2rem;
+      color: var(--text-muted);
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+    }
+    .manage-item.hidden { display: none; }
+    .manage-item.deleting { opacity: 0.4; pointer-events: none; }
+  </style>
+</head>
+<body data-page="admin">
+
+  <nav class="navbar">
+    <div class="container">
+      <a href="index.html" class="nav-logo"><img src="assets/logo.png" alt="Upamanyu Creation"></a>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="work.html">Work</a></li>
+        <li><a href="services.html">Services</a></li>
+        <li><a href="about.html">About</a></li>
+        <li><a href="blog.html">Blog</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+      <div class="nav-actions">
+        <button class="theme-toggle" data-theme-toggle aria-label="Toggle theme">
+          <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="icon-sun"  width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+        </button>
+        <button class="hamburger" aria-label="Open menu"><span></span><span></span><span></span></button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="container admin-wrap">
+
+    <div class="admin-card">
+      <h1>Add to <span style="color:var(--orange)">Work showcase</span></h1>
+      <p class="sub">Pick a video or poster, give it a title, and click "Add". The file is saved into <code>assets/work/</code> and a card is added to <code>work.html</code> automatically. For videos, a thumbnail is auto-generated from the first frame.</p>
+
+      <form id="upload-form" autocomplete="off">
+        <label class="drop-zone" id="drop-zone" for="file-input">
+          <div class="label">Drop a file here, or click to choose</div>
+          <div class="hint">MP4 / WebM / MOV for videos · JPG / PNG / WebP for posters · max 200 MB</div>
+          <input id="file-input" type="file" name="file" accept="video/mp4,video/webm,video/quicktime,image/jpeg,image/png,image/webp">
+        </label>
+
+        <div class="preview" id="preview">
+          <div class="filename" id="preview-name"></div>
+          <div class="filesize" id="preview-size"></div>
+          <div id="preview-media"></div>
+          <div class="thumb-preview" id="thumb-preview" style="display:none;">
+            <span id="thumb-label">Auto-generated thumbnail (used as cover image on Work page):</span>
+            <img id="thumb-img" alt="">
+            <div style="margin-top: 0.6rem;">
+              <button type="button" id="custom-thumb-btn" class="btn btn-secondary" style="font-size:0.8rem; padding: 0.4rem 0.9rem;">Use a custom thumbnail image</button>
+              <input id="custom-thumb-input" type="file" accept="image/jpeg,image/png,image/webp" style="display:none;">
+            </div>
+          </div>
+        </div>
+
+        <div class="row-2">
+          <div class="form-group">
+            <label for="title-input">Title</label>
+            <input id="title-input" type="text" placeholder="e.g. Café opening reel" required>
+          </div>
+          <div class="form-group">
+            <label for="category-select">Category</label>
+            <select id="category-select" required>
+              <option value="video">Video</option>
+              <option value="poster">Poster</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="progress-bar" id="progress-bar"><div class="fill" id="progress-fill"></div></div>
+
+        <button type="submit" class="btn btn-primary" id="upload-btn">Add to showcase</button>
+        <p id="upload-status" class="form-status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+
+    <div class="admin-card">
+      <h2 style="margin-bottom: 0.5rem;">Manage items</h2>
+      <p class="sub">Click the × on any card to remove it from <code>work.html</code>. Locally-uploaded files are also deleted from disk.</p>
+
+      <div class="manage-toolbar">
+        <div class="filters">
+          <button class="active" data-mfilter="all">All</button>
+          <button data-mfilter="video">Videos</button>
+          <button data-mfilter="poster">Posters</button>
+        </div>
+        <button id="reload-btn" class="btn btn-secondary" style="font-size:0.85rem; padding: 0.5rem 1rem;">Refresh list</button>
+      </div>
+
+      <div class="manage-grid" id="manage-grid">
+        <div class="manage-empty">Loading…</div>
+      </div>
+    </div>
+
+    <div class="admin-card" style="background: rgba(200,90,63,0.08); border-color: rgba(200,90,63,0.3);">
+      <h3 style="margin-bottom: 0.75rem; color: var(--orange);">Important</h3>
+      <ul style="padding-left: 1.5rem; list-style: disc;">
+        <li>This page only works while <code>node .dev-server.js</code> is running locally.</li>
+        <li>Do <strong>not</strong> link to <code>admin.html</code> from any public page or deploy it to production.</li>
+        <li>After uploading/deleting, commit/upload the changed <code>assets/work/</code> files and <code>work.html</code> to your hosting.</li>
+      </ul>
+    </div>
+
+  </main>
+
+  <script src="js/main.js"></script>
+
+  <script>
+    (function () {
+      const form = document.getElementById('upload-form');
+      const dropZone = document.getElementById('drop-zone');
+      const fileInput = document.getElementById('file-input');
+      const titleInput = document.getElementById('title-input');
+      const categorySelect = document.getElementById('category-select');
+      const preview = document.getElementById('preview');
+      const previewName = document.getElementById('preview-name');
+      const previewSize = document.getElementById('preview-size');
+      const previewMedia = document.getElementById('preview-media');
+      const thumbPreviewBox = document.getElementById('thumb-preview');
+      const thumbImg = document.getElementById('thumb-img');
+      const thumbLabel = document.getElementById('thumb-label');
+      const customThumbBtn = document.getElementById('custom-thumb-btn');
+      const customThumbInput = document.getElementById('custom-thumb-input');
+      const uploadBtn = document.getElementById('upload-btn');
+      const status = document.getElementById('upload-status');
+      const progressBar = document.getElementById('progress-bar');
+      const progressFill = document.getElementById('progress-fill');
+      const manageGrid = document.getElementById('manage-grid');
+      const reloadBtn = document.getElementById('reload-btn');
+
+      let selectedFile = null;
+      let extractedThumbBase64 = null;
+
+      function fmtSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+
+      function autoCategory(file) {
+        if (file.type.startsWith('video/')) categorySelect.value = 'video';
+        else if (file.type.startsWith('image/')) categorySelect.value = 'poster';
+      }
+
+      // Extract first-frame thumbnail from a video file via canvas
+      function extractVideoThumbnail(file) {
+        return new Promise((resolve, reject) => {
+          if (!file.type.startsWith('video/')) { resolve(null); return; }
+          const video = document.createElement('video');
+          video.preload = 'metadata';
+          video.muted = true;
+          video.playsInline = true;
+          video.crossOrigin = 'anonymous';
+          const url = URL.createObjectURL(file);
+          video.src = url;
+
+          const cleanup = () => URL.revokeObjectURL(url);
+
+          video.onloadedmetadata = () => {
+            const seekTo = isFinite(video.duration) ? Math.min(1, video.duration * 0.25) : 1;
+            try { video.currentTime = seekTo; } catch (e) { /* some formats need play first */ }
+          };
+          video.onseeked = () => {
+            try {
+              const canvas = document.createElement('canvas');
+              const w = video.videoWidth || 720;
+              const h = video.videoHeight || 1280;
+              canvas.width = w; canvas.height = h;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(video, 0, 0, w, h);
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+              const base64 = dataUrl.split(',')[1];
+              cleanup();
+              resolve({ base64, dataUrl });
+            } catch (e) {
+              cleanup();
+              resolve(null);
+            }
+          };
+          video.onerror = () => { cleanup(); resolve(null); };
+          // Safety timeout — if browser stalls, give up after 8s
+          setTimeout(() => { cleanup(); resolve(null); }, 8000);
+        });
+      }
+
+      async function showPreview(file) {
+        selectedFile = file;
+        extractedThumbBase64 = null;
+        thumbPreviewBox.style.display = 'none';
+        thumbImg.src = '';
+
+        previewName.textContent = file.name;
+        previewSize.textContent = fmtSize(file.size) + ' · ' + (file.type || 'unknown type');
+        previewMedia.innerHTML = '';
+        const url = URL.createObjectURL(file);
+        if (file.type.startsWith('video/')) {
+          const v = document.createElement('video');
+          v.src = url; v.controls = true; v.muted = true; v.playsInline = true;
+          previewMedia.appendChild(v);
+        } else if (file.type.startsWith('image/')) {
+          const img = document.createElement('img');
+          img.src = url; img.alt = file.name;
+          previewMedia.appendChild(img);
+        }
+        preview.classList.add('show');
+        autoCategory(file);
+        if (!titleInput.value) titleInput.value = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+        // For videos, extract thumbnail in background. Always show the
+        // thumb-preview box so user can swap in a custom image too.
+        if (file.type.startsWith('video/')) {
+          thumbPreviewBox.style.display = 'block';
+          customThumbBtn.textContent = 'Use a custom thumbnail image';
+          setStatus('Extracting thumbnail…', '');
+          const thumb = await extractVideoThumbnail(file);
+          if (thumb) {
+            extractedThumbBase64 = thumb.base64;
+            thumbImg.src = thumb.dataUrl;
+            thumbLabel.textContent = 'Auto-generated thumbnail (used as cover image on Work page):';
+            setStatus('Thumbnail ready. Or click "Use a custom thumbnail" to override.', 'success');
+          } else {
+            thumbImg.removeAttribute('src');
+            thumbLabel.textContent = 'Auto-thumbnail failed. Click "Use a custom thumbnail" to upload one — otherwise first frame may show as black.';
+            setStatus('Could not auto-extract thumbnail. Upload a custom one below.', 'error');
+          }
+        }
+      }
+
+      fileInput.addEventListener('change', (e) => { if (e.target.files[0]) showPreview(e.target.files[0]); });
+
+      // Custom thumbnail override
+      customThumbBtn.addEventListener('click', () => customThumbInput.click());
+      customThumbInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result;
+          extractedThumbBase64 = dataUrl.split(',')[1];
+          thumbImg.src = dataUrl;
+          thumbLabel.textContent = 'Custom thumbnail (will be used as cover image on Work page):';
+          customThumbBtn.textContent = 'Replace custom thumbnail';
+          setStatus('Custom thumbnail loaded. Click Add to upload.', 'success');
+        };
+        reader.readAsDataURL(file);
+      });
+
+      dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+      dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+      dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files[0]) {
+          fileInput.files = e.dataTransfer.files;
+          showPreview(e.dataTransfer.files[0]);
+        }
+      });
+
+      function readAsBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result;
+            const comma = result.indexOf(',');
+            resolve(comma >= 0 ? result.slice(comma + 1) : result);
+          };
+          reader.onerror = reject;
+          reader.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const pct = (e.loaded / e.total) * 50;
+              progressFill.style.width = pct + '%';
+            }
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function setStatus(msg, kind) {
+        status.textContent = msg;
+        status.className = 'form-status' + (kind ? ' ' + kind : '');
+      }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!selectedFile) { setStatus('Please pick a file first.', 'error'); return; }
+        if (!titleInput.value.trim()) { setStatus('Please enter a title.', 'error'); return; }
+
+        uploadBtn.disabled = true;
+        const oldLabel = uploadBtn.textContent;
+        uploadBtn.textContent = 'Reading file...';
+        progressBar.classList.add('show');
+        progressFill.style.width = '0%';
+
+        try {
+          const base64 = await readAsBase64(selectedFile);
+          progressFill.style.width = '60%';
+          uploadBtn.textContent = 'Uploading...';
+
+          const payload = {
+            filename: selectedFile.name,
+            base64: base64,
+            title: titleInput.value.trim(),
+            category: categorySelect.value
+          };
+          if (extractedThumbBase64 && categorySelect.value === 'video') {
+            payload.thumbBase64 = extractedThumbBase64;
+          }
+
+          const res = await fetch('/api/add-work', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          progressFill.style.width = '100%';
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+
+          setStatus('Added to showcase: ' + data.file, 'success');
+          form.reset();
+          preview.classList.remove('show');
+          previewMedia.innerHTML = '';
+          thumbPreviewBox.style.display = 'none';
+          selectedFile = null;
+          extractedThumbBase64 = null;
+          loadManageList();
+        } catch (err) {
+          console.error(err);
+          setStatus('Upload failed: ' + err.message, 'error');
+        } finally {
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = oldLabel;
+          setTimeout(() => { progressBar.classList.remove('show'); progressFill.style.width = '0%'; }, 1500);
+        }
+      });
+
+      // ---------- Manage items ----------
+
+      function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+      let allItems = [];
+      let activeFilter = 'all';
+
+      async function loadManageList() {
+        manageGrid.innerHTML = '<div class="manage-empty">Loading…</div>';
+        try {
+          const res = await fetch('/api/list-work');
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+          allItems = data.items || [];
+          renderManageList();
+        } catch (err) {
+          manageGrid.innerHTML = `<div class="manage-empty">Could not load: ${escapeHtml(err.message)}</div>`;
+        }
+      }
+
+      function renderManageList() {
+        const list = activeFilter === 'all' ? allItems : allItems.filter(i => i.cssClass === activeFilter);
+        if (!list.length) {
+          manageGrid.innerHTML = '<div class="manage-empty">No items in this category.</div>';
+          return;
+        }
+        manageGrid.innerHTML = list.map((it, idx) => `
+          <div class="manage-item" data-src="${escapeHtml(it.src)}">
+            <img class="thumb" src="${escapeHtml(it.thumb)}" alt="" loading="lazy">
+            <div class="info">
+              <div class="title">${escapeHtml(it.title)}</div>
+              <div class="cat">${escapeHtml(it.cat)}</div>
+            </div>
+            <button class="delete-btn" title="Delete this item" aria-label="Delete">×</button>
+          </div>
+        `).join('');
+        manageGrid.querySelectorAll('.manage-item').forEach(card => {
+          card.querySelector('.delete-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const src = card.dataset.src;
+            const title = card.querySelector('.title').textContent;
+            handleDelete(card, src, title);
+          });
+        });
+      }
+
+      async function handleDelete(card, src, title) {
+        const confirmed = confirm(`Delete "${title}" from the Work showcase?\n\nIf this is a locally-uploaded file, it will also be removed from disk. This cannot be undone.`);
+        if (!confirmed) return;
+        card.classList.add('deleting');
+        try {
+          const res = await fetch('/api/delete-work', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ src })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || ('HTTP ' + res.status));
+          card.remove();
+          allItems = allItems.filter(i => i.src !== src);
+          if (!allItems.length) renderManageList();
+        } catch (err) {
+          card.classList.remove('deleting');
+          alert('Delete failed: ' + err.message);
+        }
+      }
+
+      document.querySelectorAll('.manage-toolbar .filters button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.manage-toolbar .filters button').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeFilter = btn.dataset.mfilter;
+          renderManageList();
+        });
+      });
+      reloadBtn.addEventListener('click', loadManageList);
+
+      loadManageList();
+    })();
+  </script>
+</body>
+</html>
